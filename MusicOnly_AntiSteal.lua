@@ -281,35 +281,47 @@ end
 --------------------------------------------------------------------
 -- PLAY / STOP LOGIC
 --------------------------------------------------------------------
+local MUSIC_RESET_AUDIO_ID = "84899763517255"
+
+local function refreshRemotes()
+    ToolEvent, ScooterEvent = findRemotes()
+end
+
 local function flushServerMusicReset()
+    refreshRemotes()
     pcall(function()
         if ToolEvent then
             ToolEvent:FireServer("ToolMusicStop", "", nil)
-            ToolEvent:FireServer("ToolMusicText", "")
+            ToolEvent:FireServer("ToolMusicText", MUSIC_RESET_AUDIO_ID)
+            ToolEvent:FireServer("ToolMusic", MUSIC_RESET_AUDIO_ID, 1)
+            ToolEvent:FireServer("ToolMusicPlay", "", nil)
         end
+    end)
+    pcall(function()
         if ScooterEvent then
             ScooterEvent:FireServer("PickingScooterMusicStop", "", nil)
-            ScooterEvent:FireServer("PickingScooterMusicText", "")
+            ScooterEvent:FireServer("PickingScooterMusicText", MUSIC_RESET_AUDIO_ID)
+            ScooterEvent:FireServer("PickingScooterMusic", MUSIC_RESET_AUDIO_ID, 1)
+            ScooterEvent:FireServer("PickingScooterMusicPlay", "", nil)
         end
     end)
 end
 
-local function serverPlayFromStart(payload, cleanId)
+-- ต้นฉบับ Brookhaven: ToolMusicText = กันดัก, ToolMusic = ID สะอาด
+local function serverPlayFromStart(payload, cleanedPlain)
+    refreshRemotes()
     pcall(function()
-        if SELECTED_DEVICE == "Boombox" then
-            if ToolEvent then
-                ToolEvent:FireServer("ToolMusicText", payload)
-                ToolEvent:FireServer("ToolMusic", payload, 1)
-            end
-        else
-            if ScooterEvent then
-                ScooterEvent:FireServer("PickingScooterMusicText", payload)
-                ScooterEvent:FireServer("PickingScooterMusic", payload, 1)
-            end
-            if ToolEvent then
-                ToolEvent:FireServer("ToolMusicText", payload)
-                ToolEvent:FireServer("ToolMusic", payload, 1)
-            end
+        if ToolEvent then
+            ToolEvent:FireServer("ToolMusicText", payload, nil, true)
+            ToolEvent:FireServer("ToolMusic", cleanedPlain, 1)
+            ToolEvent:FireServer("ToolMusicPlay", "", nil)
+        end
+    end)
+    pcall(function()
+        if ScooterEvent then
+            ScooterEvent:FireServer("PickingScooterMusicText", payload, nil, true)
+            ScooterEvent:FireServer("PickingScooterMusic", cleanedPlain, 1)
+            ScooterEvent:FireServer("PickingScooterMusicPlay", "", nil)
         end
     end)
 end
@@ -333,15 +345,18 @@ local function stopMusic()
         local char = LocalPlayer.Character
         if not char then return end
         for _, d in ipairs(char:GetDescendants()) do
-            if d:IsA("Sound") and d.Name == "PlayersChoice" then
+            if d:IsA("Sound") and (d.Name == "PlayersChoice" or d.Name == "MusicOnlyLocalSound") then
                 d:Stop()
-                d.SoundId = ""
+                if d.Name == "MusicOnlyLocalSound" then
+                    d:Destroy()
+                else
+                    d.SoundId = ""
+                end
             end
         end
-        local tool = LocalPlayer.Character:FindFirstChildOfClass("Tool")
-            or LocalPlayer.Backpack:FindFirstChildOfClass("Tool")
-        if tool then
-            for _, d in ipairs(tool:GetDescendants()) do
+        local backpack = LocalPlayer:FindFirstChild("Backpack")
+        if backpack then
+            for _, d in ipairs(backpack:GetDescendants()) do
                 if d:IsA("Sound") and d.Name == "PlayersChoice" then
                     d:Stop()
                     d.SoundId = ""
@@ -375,6 +390,11 @@ local function playMusic(audioId)
     if cleaned == "" then return false, "กรุณาใส่ Audio ID" end
     CURRENT_AUDIO_ID = cleaned
 
+    refreshRemotes()
+    if not ToolEvent and not ScooterEvent then
+        return false, "ไม่พบ Remote เพลง (Brookhaven) — ลองถือ Boombox แล้วกดใหม่"
+    end
+
     local payload
     if ANTI_STEAL_ON then
         payload = buildAntiStealPayload(cleaned)
@@ -382,25 +402,52 @@ local function playMusic(audioId)
         payload = cleaned
     end
 
-    stopMusic()
-    task.wait(0.08)
+    local localUri = "rbxassetid://" .. cleaned
+
+    -- เคลียร์บนเซิร์ฟก่อน แล้วค่อยยิงเพลง (ให้ได้ยินตั้งแต่ต้น)
     flushServerMusicReset()
     task.wait(MUSIC_RESET_HOLD)
     serverPlayFromStart(payload, cleaned)
 
     task.spawn(function()
         task.wait(0.25)
-        local char = LocalPlayer.Character
-        if not char then return end
+        local tool = equipBoombox()
+        local snd = tool and tool:FindFirstChild("PlayersChoice", true)
 
-        if SELECTED_DEVICE == "Boombox" then
-            local tool = equipBoombox()
-            local snd = tool and tool:FindFirstChild("PlayersChoice", true)
-            forceLocalSoundRestart(snd, "rbxassetid://" .. payload)
+        if not snd then
+            local char = LocalPlayer.Character
+            if char then
+                for _, d in ipairs(char:GetDescendants()) do
+                    if d:IsA("Sound") and d.Name == "PlayersChoice" then
+                        snd = d
+                        break
+                    end
+                end
+                if not snd then
+                    local nm = char:FindFirstChild("NoMotorVehicleModel")
+                    snd = nm and nm:FindFirstChild("PlayersChoice", true)
+                end
+            end
+        end
+
+        if snd then
+            forceLocalSoundRestart(snd, localUri)
+            task.wait(0.2)
+            forceLocalSoundRestart(snd, localUri)
         else
-            local nm = char:FindFirstChild("NoMotorVehicleModel")
-            local snd = nm and nm:FindFirstChild("PlayersChoice", true)
-            forceLocalSoundRestart(snd, "rbxassetid://" .. payload)
+            local char = LocalPlayer.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                local old = hrp:FindFirstChild("MusicOnlyLocalSound")
+                if old then old:Destroy() end
+                local s = Instance.new("Sound")
+                s.Name = "MusicOnlyLocalSound"
+                s.SoundId = localUri
+                s.Volume = 1
+                s.Looped = true
+                s.Parent = hrp
+                s:Play()
+            end
         end
     end)
 
