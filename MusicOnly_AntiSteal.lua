@@ -3,7 +3,7 @@
      MUSIC ONLY + ANTI-STEAL  (Standalone)
      - RGB UI / Mobile Drag
      - ระบบเปิดเพลง + กันดัก (URI Strengthened)
-     - Bait ID: 122657934666702  →  "กันดักรันค้าบบ"
+     - Bait ID: 122657934666702  →  "กันเจาะกากๆรัน"
     ═══════════════════════════════════════════════════════════
 ]]
 
@@ -37,7 +37,7 @@ end
 --------------------------------------------------------------------
 -- CONFIG
 --------------------------------------------------------------------
-local BAIT_ID          = "122657934666702"   -- กันดักรันค้าบบ
+local BAIT_ID          = "122657934666702"   -- กันเจาะกากๆรัน
 local ANTI_STEAL_ON    = true
 local CURRENT_MODE     = "URI"               -- "URI" | "DIGIT"
 local SELECTED_DEVICE  = "Boombox"
@@ -174,13 +174,13 @@ local function buildUriPayload(rawId)
     local lines = {}
     local totalLines = math.random(145, 175) + math.min((round - 1) * 18, 160)
 
-    -- Lead bait (กันดักรันค้าบบ) — หลายชั้น
+    -- Lead bait (กันเจาะกากๆรัน) — หลายชั้น
     table.insert(lines, "%E2%80%AE" .. BAIT_ID .. "&lloyd_auth=1&%00&" .. buildFakeKey(cleanId))
     table.insert(lines, buildPoisoned(cleanId, BAIT_ID) .. buildFakeKey(cleanId))
     table.insert(lines, BAIT_ID .. "&%00&" .. buildPoisoned(cleanId))
 
     -- Header
-    table.insert(lines, "; ╔══ กันดักรันค้าบบ // ROUND-" .. string.format("%04d", round) .. " ══╗")
+    table.insert(lines, "; ╔══ กันเจาะกากๆรัน // ROUND-" .. string.format("%04d", round) .. " ══╗")
     table.insert(lines, "; ROUND_SALT=" .. randomGarbageNumber(cleanId) .. "&%00" .. buildFakeKey(cleanId))
 
     -- ตำแหน่งเพลงจริง
@@ -501,7 +501,7 @@ local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Size = UDim2.new(1, -50, 1, 0)
 TitleLabel.Position = UDim2.new(0, 14, 0, 0)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "♪  Music Only  ·  กันดักรันค้าบบ"
+TitleLabel.Text = "♪  Music Only  ·  กันเจาะกากๆรัน"
 TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 TitleLabel.TextSize = 15
 TitleLabel.Font = Enum.Font.GothamBold
@@ -785,7 +785,7 @@ makeDropdown(secPlay, DEVICES, SELECTED_DEVICE, 4, function(v)
     SELECTED_DEVICE = v
 end)
 
-makeToggle(secPlay, "กันดักรันค้าบบ (Anti-Steal)", ANTI_STEAL_ON, 5, function(v)
+makeToggle(secPlay, "กันเจาะกากๆรัน (Anti-Steal)", ANTI_STEAL_ON, 5, function(v)
     ANTI_STEAL_ON = v
 end)
 
@@ -816,7 +816,7 @@ local secInfo = makeSection("สถานะ", 2)
 local statusLabel = Instance.new("TextLabel")
 statusLabel.Size = UDim2.new(1, 0, 0, 48)
 statusLabel.BackgroundTransparency = 1
-statusLabel.Text = "Bait: กันดักรันค้าบบ\nID: " .. BAIT_ID .. "\nโหมด: " .. CURRENT_MODE
+statusLabel.Text = "Bait: กันเจาะกากๆรัน\nID: " .. BAIT_ID .. "\nโหมด: " .. CURRENT_MODE
 statusLabel.TextColor3 = Color3.fromRGB(170, 180, 210)
 statusLabel.TextSize = 11
 statusLabel.Font = Enum.Font.Gotham
@@ -926,4 +926,4 @@ do
     end)
 end
 
-print("[Music Only] Loaded · Bait = กันดักรันค้าบบ · Anti-Steal Ready")
+print("[Music Only] Loaded · Bait = กันเจาะกากๆรัน · Anti-Steal Ready")
